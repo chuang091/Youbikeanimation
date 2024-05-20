@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bar Chart with D3.js</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .bar {
+            fill: steelblue;
+        }
+        .bar:hover {
+            fill: orange !important;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            width: auto;
+            height: auto;
+            padding: 5px;
+            font: 12px 'Noto Sans TC', sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+        .legend {
+            font-family: 'Noto Sans TC', sans-serif;
+            font-size: 10px;
+        }
+        text {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Data
+        const data = [
+            {route: "臺灣科技大學側門 - 捷運公館站(2號出口)", count: 32099, distance: 826},
+            {route: "臺灣科技大學後門 - 捷運公館站(2號出口)", count: 26147, distance: 1132},
+            {route: "捷運公館站(2號出口) - 臺灣科技大學側門", count: 25657, distance: 1655},
+            {route: "捷運公館站(2號出口) - 臺灣科技大學後門", count: 23338, distance: 1794},
+            {route: "捷運劍南路站(2號出口) - 樂群二敬業四路口", count: 21030, distance: 729},
+            {route: "百齡國小 - 捷運劍潭站(2號出口)", count: 20104, distance: 735},
+            {route: "樂群二敬業四路口 - 捷運劍南路站(2號出口)", count: 19658, distance: 809},
+            {route: "捷運劍潭站(2號出口) - 百齡國小", count: 19396, distance: 1937},
+            {route: "捷運台北101/世貿站(2號出口) - 臺北醫學大學", count: 18980, distance: 838},
+            {route: "清江國小 - 捷運奇岩站(三合街)", count: 18787, distance: 603},
+            {route: "捷運奇岩站(三合街) - 清江國小", count: 16958, distance: 1467},
+            {route: "捷運象山站(2號出口) - 象山公園", count: 16128, distance: 359},
+            {route: "臺灣師範大學(圖書館) - 捷運古亭站(5號出口)", count: 15168, distance: 689},
+            {route: "象山公園 - 捷運象山站(2號出口)", count: 14856, distance: 359},
+            {route: "臺北市立圖書館(總館) - 捷運大安森林公園站(5號出口)", count: 14608, distance: 2432},
+            {route: "健安新城 - 捷運南京三民站(1號出口)", count: 14606, distance: 557},
+            {route: "臺北醫學大學 - 捷運台北101/世貿站(2號出口)", count: 14576, distance: 837},
+            {route: "捷運古亭站(5號出口) - 臺灣師範大學(圖書館)", count: 14555, distance: 970},
+            {route: "捷運大安森林公園站(5號出口) - 臺北市立圖書館(總館)", count: 13683, distance: 693},
+            {route: "蘭興公園 - 捷運芝山站(2號出口)_1", count: 13382, distance: 1400}
+        ];
+
+        // Set the dimensions of the canvas / graph
+        const margin = {top: 20, right: 20, bottom: 80, left: 220},
+              width = 1200 - margin.left - margin.right,
+              height = 600 - margin.top - margin.bottom;
+
+        // Set the ranges
+        const x = d3.scaleLinear().range([0, width]);
+        const y = d3.scaleBand().range([height, 0]).padding(0.1);
+
+        // Append the svg object to the body of the page
+        // Append a 'group' element to 'svg'
+        // Moves the 'group' element to the top left margin
+        const svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .style("background-color", "transparent")
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        // Scale the range of the data in the domains
+        x.domain([0, d3.max(data, function(d) { return d.count; })]);
+        y.domain(data.map(function(d) { return d.route; }));
+
+        // Create tooltip
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+        // Append the rectangles for the bar chart
+        svg.selectAll(".bar")
+            .data(data)
+            .enter().append("rect")
+            .attr("class", "bar")
+            .attr("width", function(d) { return x(d.count); })
+            .attr("y", function(d) { return y(d.route); })
+            .attr("height", y.bandwidth())
+            .style("fill", function(d) { return d3.interpolateViridis(d.distance / 2432); })
+            .on("mouseover", function(event, d) {
+                tooltip.transition().duration(200).style("opacity", .9);
+                tooltip.html("路線: " + d.route + "<br>次數: " + d.count + "<br>距離: " + d.distance)
+                    .style("left", (event.pageX + 5) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function(d) {
+                tooltip.transition().duration(500).style("opacity", 0);
+            });
+
+        // Add the x Axis
+        svg.append("g")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x));
+
+        // Add the y Axis
+        svg.append("g")
+            .call(d3.axisLeft(y));
+
+        // Add legend
+        const legendWidth = 300;
+        const legendHeight = 10;
+        const legendX = width - legendWidth - 20;
+        const legendY = height + margin.bottom - 40;
+
+        const legendSvg = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", `translate(${legendX}, ${legendY})`);
+
+        const legendScale = d3.scaleLinear()
+            .domain([0, 2432])
+            .range([0, legendWidth]);
+
+        const legendAxis = d3.axisBottom(legendScale)
+            .ticks(5)
+            .tickFormat(d3.format(".0f"));
+
+        legendSvg.append("g")
+            .attr("class", "axis")
+            .attr("transform", `translate(0, ${legendHeight})`)
+            .call(legendAxis);
+
+        const legendGradient = legendSvg.append("defs")
+            .append("linearGradient")
+            .attr("id", "legend-gradient");
+
+        legendGradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", d3.interpolateViridis(0));
+
+        legendGradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", d3.interpolateViridis(1));
+
+        legendSvg.append("rect")
+            .attr("width", legendWidth)
+            .attr("height", legendHeight)
+            .style("fill", "url(#legend-gradient)");
+    </script>
+</body>
+</html>
