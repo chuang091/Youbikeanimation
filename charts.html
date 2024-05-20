@@ -68,9 +68,12 @@
         ];
 
         // Set the dimensions of the canvas / graph
-        const margin = {top: 20, right: 20, bottom: 50, left: 220},
+        const margin = {top: 20, right: 20, bottom: 50, left: 250},
               width = 1150 - margin.left - margin.right,
-              height = 400 - margin.top - margin.bottom;
+              height = 300 - margin.top - margin.bottom,
+              legendWidth = 300,
+              legendHeight = 10,
+              histogramHeight = 100;
 
         // Set the ranges
         const x = d3.scaleLinear().range([0, width]);
@@ -81,7 +84,7 @@
         // Moves the 'group' element to the top left margin
         const svg = d3.select("body").append("svg")
             .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
+            .attr("height", height + margin.top + margin.bottom + histogramHeight + 40)
             .style("background-color", "transparent")
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
@@ -93,6 +96,11 @@
         // Create tooltip
         const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
 
+        // Define color scale
+        const colorScale = d3.scaleThreshold()
+            .domain([500, 1000, 1500, 2000])
+            .range(["#FFFF00", "#FFD700", "#FFA500", "#FF4500", "#FF0000"]);
+
         // Append the rectangles for the bar chart
         svg.selectAll(".bar")
             .data(data)
@@ -101,7 +109,7 @@
             .attr("width", function(d) { return x(d.count); })
             .attr("y", function(d) { return y(d.route); })
             .attr("height", y.bandwidth())
-            .style("fill", function(d) { return d3.interpolateViridis(d.distance / 2432); })
+            .style("fill", function(d) { return colorScale(d.distance); })
             .on("mouseover", function(event, d) {
                 tooltip.transition().duration(200).style("opacity", .9);
                 tooltip.html("路線: " + d.route + "<br>次數: " + d.count + "<br>距離: " + d.distance)
@@ -121,18 +129,43 @@
         svg.append("g")
             .call(d3.axisLeft(y));
 
-        // Add legend
-        const legendWidth = 300;
-        const legendHeight = 10;
-        const legendX = width - legendWidth - 20;
-        const legendY = height + margin.bottom - 30;
+        // Add legend and histogram
+        const legendHistogramGroup = svg.append("g")
+            .attr("transform", "translate(" + (width - legendWidth) + "," + (-margin.top) + ")");
 
-        const legendSvg = svg.append("g")
+        // Add histogram
+        const histogramSvg = legendHistogramGroup.append("g");
+
+        const histogramX = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.distance)])
+            .range([0, legendWidth]);
+
+        const histogramBins = d3.histogram()
+            .domain(histogramX.domain())
+            .thresholds(histogramX.ticks(20))
+            (data.map(d => d.distance));
+
+        const histogramY = d3.scaleLinear()
+            .domain([0, d3.max(histogramBins, d => d.length)])
+            .range([histogramHeight, 0]);
+
+        histogramSvg.selectAll("rect")
+            .data(histogramBins)
+            .enter().append("rect")
+            .attr("x", 1)
+            .attr("transform", d => `translate(${histogramX(d.x0)},${histogramY(d.length)})`)
+            .attr("width", d => histogramX(d.x1) - histogramX(d.x0) - 1)
+            .attr("height", d => histogramHeight - histogramY(d.length))
+            .style("fill", d => colorScale(d.x0));
+
+
+        // Add legend
+        const legendSvg = legendHistogramGroup.append("g")
             .attr("class", "legend")
-            .attr("transform", `translate(${legendX}, ${legendY})`);
+            .attr("transform", `translate(0, ${histogramHeight})`);
 
         const legendScale = d3.scaleLinear()
-            .domain([0, 2432])
+            .domain([0, 2500])
             .range([0, legendWidth]);
 
         const legendAxis = d3.axisBottom(legendScale)
@@ -150,16 +183,37 @@
 
         legendGradient.append("stop")
             .attr("offset", "0%")
-            .attr("stop-color", d3.interpolateViridis(0));
+            .attr("stop-color", "#FFFF00");
+
+        legendGradient.append("stop")
+            .attr("offset", "25%")
+            .attr("stop-color", "#FFD700");
+
+        legendGradient.append("stop")
+            .attr("offset", "50%")
+            .attr("stop-color", "#FFA500");
+
+        legendGradient.append("stop")
+            .attr("offset", "75%")
+            .attr("stop-color", "#FF4500");
 
         legendGradient.append("stop")
             .attr("offset", "100%")
-            .attr("stop-color", d3.interpolateViridis(1));
+            .attr("stop-color", "#FF0000");
 
         legendSvg.append("rect")
             .attr("width", legendWidth)
             .attr("height", legendHeight)
             .style("fill", "url(#legend-gradient)");
+
+        legendSvg.append("text")
+            .attr("x", legendWidth / 2)
+            .attr("y", legendHeight + 30)
+            .attr("text-anchor", "middle")
+            .style("font-size", "12px")
+            .style("font-family", "'Noto Sans TC', sans-serif")
+            .text("騎乘距離 (米)");
+
     </script>
 </body>
 </html>
